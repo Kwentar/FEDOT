@@ -7,6 +7,7 @@ from networkx.algorithms.isolate import isolates
 from fedot.core.chains.chain import Chain
 from fedot.core.chains.chain_convert import chain_as_nx_graph
 from fedot.core.chains.node import PrimaryNode, SecondaryNode
+from fedot.core.operations.atomized_model import AtomizedModel
 from fedot.core.operations.model import Model
 from fedot.core.repository.operation_types_repository import \
     OperationTypesRepository, get_ts_operations
@@ -93,7 +94,7 @@ def has_final_operation_as_model(chain: Chain):
     """ Check if the operation in root node is model or not """
     root_node = chain.root_node
 
-    if type(root_node.operation) is not Model:
+    if type(root_node.operation) is not Model and type(root_node.operation) is not AtomizedModel:
         raise ValueError(f'{ERROR_PREFIX} Root operation is not a model')
 
     return True

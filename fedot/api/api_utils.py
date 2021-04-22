@@ -142,7 +142,8 @@ def compose_fedot_model(train_data: InputData,
                         composer_metric=None,
                         learning_time: float = 5,
                         with_tuning=False,
-                        tuner_metric=None
+                        tuner_metric=None,
+                        initial_chain=None
                         ):
     """ Function for composing FEDOT chain model """
 
@@ -183,6 +184,7 @@ def compose_fedot_model(train_data: InputData,
                                        metric_function=metric_function,
                                        composer_requirements=composer_requirements,
                                        optimizer_parameters=optimizer_parameters,
+                                       initial_chain=initial_chain,
                                        logger=logger)
     gp_composer = builder.build()
 
@@ -249,6 +251,7 @@ def _obtain_initial_assumption(task: Task) -> Chain:
 def _get_gp_composer_builder(task: Task, metric_function,
                              composer_requirements: GPComposerRequirements,
                              optimizer_parameters: GPChainOptimiserParameters,
+                             initial_chain,
                              logger: Log):
     """ Return GPComposerBuilder with parameters and if it is necessary
     init_chain in it """
@@ -258,7 +261,7 @@ def _get_gp_composer_builder(task: Task, metric_function,
         with_optimiser_parameters(optimizer_parameters). \
         with_metrics(metric_function).with_logger(logger)
 
-    init_chain = _obtain_initial_assumption(task)
+    init_chain = _obtain_initial_assumption(task) if not initial_chain else initial_chain
 
     if init_chain is not None:
         builder = builder.with_initial_chain(init_chain)

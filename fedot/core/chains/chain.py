@@ -1,5 +1,3 @@
-import numpy as np
-
 from copy import deepcopy
 from datetime import timedelta
 from multiprocessing import Manager, Process
@@ -180,7 +178,7 @@ class Chain:
         """
 
         if not self.is_fitted():
-            ex = 'Trained operation cache is not actual or empty'
+            ex = 'Chain is not fitted yet'
             self.log.error(ex)
             raise ValueError(ex)
 

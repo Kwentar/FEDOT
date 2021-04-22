@@ -1,11 +1,11 @@
-from uuid import uuid4
 from typing import Callable
+from uuid import uuid4
 
 from fedot.core.chains.chain import Chain
 from fedot.core.data.data import InputData
 from fedot.core.operations.operation import Operation
 from fedot.core.repository.operation_types_repository import OperationMetaInfo, \
-    atomized_model_meta_tags, atomized_model_type
+    atomized_model_type
 from fedot.core.utils import make_chain_generator
 
 
@@ -23,13 +23,13 @@ class AtomizedModel(Operation):
             use_cache: bool = True):
 
         predicted_train = self.chain.fit(input_data=data)
-        fitted_atomized_operation_head = self.chain.root_node
+        fitted_atomized_operation = self.chain  # .root_node
 
-        return fitted_atomized_operation_head, predicted_train
+        return fitted_atomized_operation, predicted_train
 
     def predict(self, fitted_operation, data: InputData,
                 is_fit_chain_stage: bool = False, output_mode: str = 'default'):
-        prediction = self.chain.predict(input_data=data, output_mode=output_mode)
+        prediction = fitted_operation.predict(input_data=data, output_mode=output_mode)
 
         return prediction
 
