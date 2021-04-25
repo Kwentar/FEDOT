@@ -8,7 +8,7 @@ from fedot.core.chains.chain import Chain
 from fedot.core.chains.node import PrimaryNode, SecondaryNode
 from fedot.core.data.data import InputData
 from fedot.core.operations.atomized_model import AtomizedModel
-from test.unit.utilities.test_chain_import_export import create_func_delete_files, create_correct_path
+from test.unit.utilities.test_chain_import_export import create_correct_path, create_func_delete_files
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -155,8 +155,8 @@ def test_fit_predict_atomized_model_correctly():
     chain.fit(train_data)
     predicted_values = chain.predict(test_data)
 
-    atomized_model.fit(train_data)
-    predicted_atomized_output = atomized_model.predict(None, test_data)
+    fitted_atomized_model, _ = atomized_model.fit(train_data)
+    predicted_atomized_output = atomized_model.predict(fitted_atomized_model, test_data)
     predicted_atomized_values = predicted_atomized_output.predict
 
     bfr_tun_mse = mean_squared_error(y_true=test_data.target, y_pred=predicted_values.predict)
@@ -181,11 +181,12 @@ def test_fine_tune_atomized_model_correct():
                                                     input_data=train_data,
                                                     iterations=5,
                                                     max_lead_time=1)
-    dummy_atomized_model.fit(train_data)
+    fitted_dummy_model, _ = dummy_atomized_model.fit(train_data)
+    fitted_fine_tuned_atomized_model, _ = fine_tuned_atomized_model.fit(train_data)
 
-    after_tuning_output = fine_tuned_atomized_model.predict(None, data=test_data)
+    after_tuning_output = fine_tuned_atomized_model.predict(fitted_fine_tuned_atomized_model, data=test_data)
     after_tuning_predicted = after_tuning_output.predict
-    before_tuning_output = dummy_atomized_model.predict(None, data=test_data)
+    before_tuning_output = dummy_atomized_model.predict(fitted_dummy_model, data=test_data)
     before_tuning_predicted = before_tuning_output.predict
 
     aft_tun_mse = mean_squared_error(y_true=test_data.target, y_pred=after_tuning_predicted)
