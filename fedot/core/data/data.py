@@ -10,7 +10,7 @@ import pandas as pd
 from PIL import Image
 from sklearn.model_selection import train_test_split
 
-from fedot.core.data.load_data import TextBatchLoader, JSONBatchLoader
+from fedot.core.data.load_data import JSONBatchLoader, TextBatchLoader
 from fedot.core.data.merge import DataMerger
 from fedot.core.repository.dataset_types import DataTypesEnum
 from fedot.core.repository.tasks import Task, TaskTypesEnum
@@ -186,7 +186,7 @@ class Data:
             features = np.column_stack(tuple(fields_to_combine))
         else:
             val = df_data[fiedls_to_use[0]]
-            if isinstance(val[0], list) and len(val[0]) == 1:
+            if isinstance(val[0], list):
                 val = [v[0] for v in val]
             features = np.array(val)
 
