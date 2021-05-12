@@ -1,18 +1,16 @@
 import warnings
-
 from typing import Optional
-
-from fedot.core.operations.evaluation.operation_implementations.models.\
-    discriminant_analysis import LDAImplementation, QDAImplementation
-from fedot.core.operations.evaluation.operation_implementations.models.svc import CustomSVCImplementation
-from fedot.core.operations.evaluation.operation_implementations.models. \
-    keras import CustomCNNImplementation
-from fedot.core.operations.evaluation.operation_implementations. \
-    data_operations.sklearn_selectors import LinearClassFSImplementation, NonLinearClassFSImplementation
-from fedot.core.operations.evaluation.operation_implementations.models.knn import CustomKnnClassImplementation
 
 from fedot.core.data.data import InputData
 from fedot.core.operations.evaluation.evaluation_interfaces import EvaluationStrategy, SkLearnEvaluationStrategy
+from fedot.core.operations.evaluation.operation_implementations. \
+    data_operations.sklearn_selectors import LinearClassFSImplementation, NonLinearClassFSImplementation
+from fedot.core.operations.evaluation.operation_implementations.models. \
+    discriminant_analysis import LDAImplementation, QDAImplementation
+from fedot.core.operations.evaluation.operation_implementations.models. \
+    keras import CustomCNNImplementation
+from fedot.core.operations.evaluation.operation_implementations.models.knn import CustomKnnClassImplementation
+from fedot.core.operations.evaluation.operation_implementations.models.svc import CustomSVCImplementation
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -94,7 +92,7 @@ class CustomClassificationStrategy(EvaluationStrategy):
             prediction = trained_operation.predict_proba(predict_data)
             if n_classes < 2:
                 raise NotImplementedError()
-            elif n_classes == 2 and self.output_mode != 'full_probs':
+            elif n_classes == 2 and self.output_mode != 'full_probs' and len(prediction.shape) > 1:
                 prediction = prediction[:, 1]
         else:
             raise ValueError(f'Output model {self.output_mode} is not supported')

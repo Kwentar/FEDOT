@@ -1,13 +1,16 @@
+import glob
 import os
 import warnings
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
+import imageio
 import numpy as np
 import pandas as pd
+from PIL import Image
 from sklearn.model_selection import train_test_split
 
-from fedot.core.data.load_data import TextBatchLoader
+from fedot.core.data.load_data import TextBatchLoader, JSONBatchLoader
 from fedot.core.data.merge import DataMerger
 from fedot.core.repository.dataset_types import DataTypesEnum
 from fedot.core.repository.tasks import Task, TaskTypesEnum
@@ -104,8 +107,22 @@ class Data:
         target = labels
 
         if type(images) is str:
-            features = np.load(images)
-            target = np.load(labels)
+            if '*.jpeg' in images:
+                path = images
+                images_list = []
+                for file_path in glob.glob(path):
+                    im = Image.open(file_path)
+                    img_size = (28, 28)
+                    im_resized = im.resize(img_size, Image.NEAREST)
+                    im_resized.save(f'{file_path}_tmp', 'png')
+
+                    im = imageio.imread(f'{file_path}_tmp', 'png')
+                    images_list.append(np.asarray(im)[..., 0])
+                features = np.asarray(images_list)
+                target = labels
+            else:
+                features = np.load(images)
+                target = np.load(labels)
 
         idx = np.arange(0, len(features))
 
@@ -144,6 +161,36 @@ class Data:
 
         features = np.array(df_text['text'])
         target = np.array(df_text[label])
+        idx = [index for index in range(len(target))]
+
+        return InputData(idx=idx, features=features,
+                         target=target, task=task, data_type=data_type)
+
+    @staticmethod
+    def from_json_files(files_path: str,
+                        fiedls_to_use: List,
+                        label: str = 'label',
+                        task: Task = Task(TaskTypesEnum.classification),
+                        data_type: DataTypesEnum = DataTypesEnum.table, ):
+
+        if os.path.isfile(files_path):
+            raise ValueError("""Path to the directory expected but got file""")
+
+        df_data = JSONBatchLoader(path=files_path, label=label, fields_to_use=fiedls_to_use).extract()
+
+        if len(fiedls_to_use) > 1:
+            fields_to_combine = []
+            for f in fiedls_to_use:
+                fields_to_combine.append(np.array(df_data[f]))
+
+            features = np.column_stack(tuple(fields_to_combine))
+        else:
+            val = df_data[fiedls_to_use[0]]
+            if isinstance(val[0], list) and len(val[0]) == 1:
+                val = [v[0] for v in val]
+            features = np.array(val)
+
+        target = np.array(df_data[label])
         idx = [index for index in range(len(target))]
 
         return InputData(idx=idx, features=features,
@@ -280,6 +327,90 @@ def _split_table(data, task, split_ratio, with_shuffle=False):
     return train_data, test_data
 
 
+def _split_image(data, task, split_ratio, with_shuffle=False):
+    """ Split image data into train and test parts
+
+    :param data: array with data to split (not InputData)
+    :param task: task to solve
+    :param split_ratio: threshold for partitioning
+    :param with_shuffle: is data needed to be shuffled or not
+    """
+
+    if not 0. < split_ratio < 1.:
+        raise ValueError('Split ratio must belong to the interval (0; 1)')
+    random_state = 42
+
+    # Predictors and target
+    input_features = data.features
+    input_target = data.target
+
+    x_train, x_test, y_train, y_test = train_test_split(input_features,
+                                                        input_target,
+                                                        test_size=1. - split_ratio,
+                                                        shuffle=with_shuffle,
+                                                        random_state=random_state)
+
+    idx_for_train = np.arange(0, len(x_train))
+    idx_for_predict = np.arange(0, len(x_test))
+
+    # Prepare data to train the operation
+    train_data = InputData(idx=idx_for_train,
+                           features=x_train,
+                           target=y_train,
+                           task=task,
+                           data_type=DataTypesEnum.image)
+
+    test_data = InputData(idx=idx_for_predict,
+                          features=x_test,
+                          target=y_test,
+                          task=task,
+                          data_type=DataTypesEnum.image)
+
+    return train_data, test_data
+
+
+def _split_text(data, task, split_ratio, with_shuffle=False):
+    """ Split text data into train and test parts
+
+    :param data: array with data to split (not InputData)
+    :param task: task to solve
+    :param split_ratio: threshold for partitioning
+    :param with_shuffle: is data needed to be shuffled or not
+    """
+
+    if not 0. < split_ratio < 1.:
+        raise ValueError('Split ratio must belong to the interval (0; 1)')
+    random_state = 42
+
+    # Predictors and target
+    input_features = data.features
+    input_target = data.target
+
+    x_train, x_test, y_train, y_test = train_test_split(input_features,
+                                                        input_target,
+                                                        test_size=1. - split_ratio,
+                                                        shuffle=with_shuffle,
+                                                        random_state=random_state)
+
+    idx_for_train = np.arange(0, len(x_train))
+    idx_for_predict = np.arange(0, len(x_test))
+
+    # Prepare data to train the operation
+    train_data = InputData(idx=idx_for_train,
+                           features=x_train,
+                           target=y_train,
+                           task=task,
+                           data_type=DataTypesEnum.text)
+
+    test_data = InputData(idx=idx_for_predict,
+                          features=x_test,
+                          target=y_test,
+                          task=task,
+                          data_type=DataTypesEnum.text)
+
+    return train_data, test_data
+
+
 def train_test_data_setup(data: InputData, split_ratio=0.8,
                           shuffle_flag=False) -> Tuple[InputData, InputData]:
     """ Function for train and test split
@@ -299,6 +430,12 @@ def train_test_data_setup(data: InputData, split_ratio=0.8,
         elif data.data_type == DataTypesEnum.table:
             train_data, test_data = _split_table(data, task, split_ratio,
                                                  with_shuffle=shuffle_flag)
+        elif data.data_type == DataTypesEnum.image:
+            train_data, test_data = _split_image(data, task, split_ratio,
+                                                 with_shuffle=shuffle_flag)
+        elif data.data_type == DataTypesEnum.text:
+            train_data, test_data = _split_text(data, task, split_ratio,
+                                                with_shuffle=shuffle_flag)
         else:
             train_data, test_data = _split_table(data, task, split_ratio,
                                                  with_shuffle=shuffle_flag)
