@@ -1,7 +1,7 @@
 from copy import copy
 from typing import Any, List, Optional
 
-from fedot.core.chains.node_operator import NodeOperator
+from fedot.core.graphs.node_operator import NodeOperator
 from fedot.core.log import default_log
 
 

@@ -20,7 +20,7 @@ from fedot.core.repository.tasks import Task, TaskTypesEnum, TsForecastingParams
 from fedot.core.utils import probs_to_labels
 from test.unit.chains.test_chain_comparison import chain_first
 from test.unit.chains.test_chain_tuning import classification_dataset
-from test.unit.chains.test_graph_operator import get_chain
+from test.unit.graphs.test_graph_operator import get_chain
 
 seed(1)
 np.random.seed(1)
