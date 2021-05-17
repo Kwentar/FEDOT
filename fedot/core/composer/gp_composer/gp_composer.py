@@ -19,8 +19,8 @@ from fedot.core.composer.optimisers.gp_comp.param_free_gp_optimiser import GPCha
 from fedot.core.data.data import InputData, train_test_data_setup
 from fedot.core.log import Log, default_log
 from fedot.core.repository.operation_types_repository import OperationTypesRepository, get_operations_for_task
-from fedot.core.repository.quality_metrics_repository import ClassificationMetricsEnum, MetricsRepository, \
-    RegressionMetricsEnum, MetricsEnum
+from fedot.core.repository.quality_metrics_repository import (ClassificationMetricsEnum, MetricsEnum,
+                                                              MetricsRepository, RegressionMetricsEnum)
 from fedot.core.repository.tasks import Task, TaskTypesEnum
 
 sample_split_ration_for_tasks = {
@@ -68,6 +68,7 @@ class ChainGenerationParams:
     primary_node_func: Callable = PrimaryNode
     secondary_node_func: Callable = SecondaryNode
     chain_class: Callable = Chain
+    rules_for_constraint: Optional[List[Callable]] = None
 
 
 class GPComposer(Composer):

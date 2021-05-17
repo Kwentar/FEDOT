@@ -65,7 +65,8 @@ def mutation(types: List[MutationTypesEnum], chain_generation_params,
                 new_chain = mutation_by_type[mutation_type](chain=deepcopy(ind.chain), requirements=requirements,
                                                             chain_generation_params=chain_generation_params,
                                                             max_depth=max_depth)
-                is_correct_chain = constraint_function(new_chain)
+
+                is_correct_chain = constraint_function(new_chain, chain_generation_params.rules_for_constraint)
                 if is_correct_chain:
                     new_individual = Individual(new_chain)
                     new_individual.parent_operators.append(ParentOperator(operator_type='mutation',
@@ -81,7 +82,7 @@ def mutation(types: List[MutationTypesEnum], chain_generation_params,
 def simple_mutation(chain: Any, requirements, chain_generation_params, max_depth: int = None) -> Any:
     """
     This type of mutation is passed over all nodes of the tree started from the root node and changes
-    nodes’ operations with probability - 'node mutation probability' which is inicialised inside the function
+    nodes’ operations with probability - 'node mutation probability' which is initialised inside the function
     """
 
     node_mutation_probability = get_mutation_prob(mut_id=requirements.mutation_strength,
@@ -156,7 +157,7 @@ def reduce_mutation(chain: Any, requirements, chain_generation_params, max_depth
 def parameter_change_mutation(chain: Any, requirements, **kwargs) -> Any:
     """
     This type of mutation is passed over all nodes and changes
-    hyperpearameters of the operations with probability - 'node mutation probability'
+    hyperparameters of the operations with probability - 'node mutation probability'
     which is initialised inside the function
     """
     node_mutation_probability = get_mutation_prob(mut_id=requirements.mutation_strength,

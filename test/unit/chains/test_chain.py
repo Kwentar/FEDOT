@@ -128,7 +128,7 @@ def test_chain_sequential_fit_correct(data_setup):
     for node in [first, second, third, final]:
         chain.add_node(node)
 
-    train_predicted = chain.fit(input_data=train, use_cache=False)
+    train_predicted = chain.fit(input_data=train, use_fitted=False)
 
     assert chain.root_node.descriptive_id == (
         '(((/n_logit_default_params;)/'

@@ -1,12 +1,12 @@
+import datetime
 import os
 import shutil
-import datetime
 
 import pytest
 
-from fedot.utilities.profiler.time_profiler import TimeProfiler
+from cases.credit_scoring_problem import get_scoring_data, run_credit_scoring_problem
 from fedot.utilities.profiler.memory_profiler import MemoryProfiler
-from cases.credit_scoring_problem import run_credit_scoring_problem, get_scoring_data
+from fedot.utilities.profiler.time_profiler import TimeProfiler
 
 
 @pytest.fixture(scope='session', autouse=True)
