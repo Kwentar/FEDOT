@@ -50,8 +50,7 @@ class GraphVisualiser:
         nx_graph, node_labels = in_graph_converter_function(chain=graph)
         word_labels = [str(node) for node in node_labels.values()]
         inv_map = {v: k for k, v in node_labels.items()}
-        if (type(graph).__name__ == 'Chain' or
-                type(graph).__name__ == 'GraphObject'):
+        if type(graph).__name__ == 'Chain':
             root = inv_map[graph.root_node]
         else:
             root = 0

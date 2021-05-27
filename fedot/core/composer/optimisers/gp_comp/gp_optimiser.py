@@ -42,8 +42,8 @@ class GPChainOptimiserParameters:
     """
 
     def __init__(self, selection_types: List[SelectionTypesEnum] = None,
-                 crossover_types: List[CrossoverTypesEnum] = None,
-                 mutation_types: List[MutationTypesEnum] = None,
+                 crossover_types: List[Union[CrossoverTypesEnum, Any]] = None,
+                 mutation_types: List[Union[MutationTypesEnum, Any]] = None,
                  regularization_type: RegularizationTypesEnum = RegularizationTypesEnum.none,
                  genetic_scheme_type: GeneticSchemeTypesEnum = GeneticSchemeTypesEnum.generational,
                  with_auto_depth_configuration: bool = False, depth_increase_step: int = 3,

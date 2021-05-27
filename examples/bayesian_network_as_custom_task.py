@@ -13,7 +13,7 @@ from fedot.core.composer.optimisers.gp_comp.gp_optimiser import (
     GPChainOptimiser,
     GPChainOptimiserParameters,
     GeneticSchemeTypesEnum)
-from fedot.core.composer.optimisers.gp_comp.operators.mutation import MutationTypesEnum
+from fedot.core.composer.optimisers.gp_comp.operators.crossover import CrossoverTypesEnum
 from fedot.core.composer.optimisers.gp_comp.operators.regularization import RegularizationTypesEnum
 from fedot.core.graphs.graph import GraphObject
 from fedot.core.graphs.graph_node import PrimaryGraphNode, SecondaryGraphNode
@@ -39,12 +39,28 @@ def _has_no_duplicates(graph):
     return True
 
 
+def custom_mutation(chain: GraphObject, requirements: GPComposerRequirements,
+                    chain_generation_params: ChainGenerationParams, max_depth: int = None):
+    rid = random.choice(range(len(chain.nodes)))
+    random_node = chain.nodes[rid]
+    other_random_node = chain.nodes[random.choice(range(len(chain.nodes)))]
+    if random_node != other_random_node:
+        if not isinstance(random_node, PrimaryGraphNode):
+            chain.nodes[rid].nodes_from = [other_random_node]
+        else:
+            chain.nodes[rid] = SecondaryGraphNode(random_node.operation,
+                                                  nodes_from=[other_random_node])
+    return chain
+
+
 def run_bayesian(max_lead_time: datetime.timedelta = datetime.timedelta(minutes=0.2)):
     data = pd.read_csv(os.path.join(fedot_project_root(), 'examples', 'data', 'geo_encoded.csv'))
     nodes_types = ['Tectonic regime', 'Period', 'Lithology',
                    'Structural setting', 'Gross', 'Netpay',
                    'Porosity', 'Permeability', 'Depth']
     rules = [has_no_self_cycled_nodes, has_no_cycle, _has_no_duplicates]
+
+    initial = GraphObject(nodes=[PrimaryGraphNode(_) for _ in nodes_types])
 
     requirements = GPComposerRequirements(
         primary=nodes_types,
@@ -54,10 +70,8 @@ def run_bayesian(max_lead_time: datetime.timedelta = datetime.timedelta(minutes=
 
     optimiser_parameters = GPChainOptimiserParameters(
         genetic_scheme_type=GeneticSchemeTypesEnum.steady_state,
-        mutation_types=[
-            MutationTypesEnum.simple,
-            MutationTypesEnum.reduce,
-            MutationTypesEnum.growth],
+        mutation_types=[custom_mutation],
+        crossover_types=[CrossoverTypesEnum.none],
         regularization_type=RegularizationTypesEnum.none)
 
     chain_generation_params = ChainGenerationParams(
@@ -70,8 +84,8 @@ def run_bayesian(max_lead_time: datetime.timedelta = datetime.timedelta(minutes=
         chain_generation_params=chain_generation_params,
         metrics=[],
         parameters=optimiser_parameters,
-        requirements=requirements, initial_chain=None,
-        log=default_log(logger_name='Bayesian', verbose_level=2))
+        requirements=requirements, initial_chain=initial,
+        log=default_log(logger_name='Bayesian', verbose_level=1))
 
     optimized_network = optimizer.optimise(partial(custom_metric, data=data))
 

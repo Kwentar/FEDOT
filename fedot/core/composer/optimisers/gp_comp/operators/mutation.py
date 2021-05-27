@@ -1,7 +1,7 @@
 from copy import deepcopy
 from functools import partial
 from random import choice, randint, random
-from typing import Any
+from typing import Any, Callable, Union
 
 from fedot.core.chains.chain import List
 from fedot.core.chains.chain_template import ChainTemplate
@@ -52,19 +52,25 @@ def will_mutation_be_applied(mutation_prob, mutation_type) -> bool:
     return not (random() > mutation_prob or mutation_type == MutationTypesEnum.none)
 
 
-def mutation(types: List[MutationTypesEnum], chain_generation_params,
+def mutation(types: List[Union[MutationTypesEnum, Callable]], chain_generation_params,
              ind: Individual, requirements, log: Log,
              max_depth: int = None) -> Any:
     """ Function apply mutation operator to chain """
     max_depth = max_depth if max_depth else requirements.max_depth
     mutation_prob = requirements.mutation_prob
     mutation_type = choice(types)
+    is_custom_mutation = isinstance(mutation_type, Callable)
     if will_mutation_be_applied(mutation_prob, mutation_type):
-        if mutation_type in mutation_by_type:
+        if mutation_type in mutation_by_type or is_custom_mutation:
             for _ in range(MAX_NUM_OF_ATTEMPTS):
-                new_chain = mutation_by_type[mutation_type](chain=deepcopy(ind.chain), requirements=requirements,
-                                                            chain_generation_params=chain_generation_params,
-                                                            max_depth=max_depth)
+                if is_custom_mutation:
+                    mutation_func = mutation_type
+                else:
+                    mutation_func = mutation_by_type[mutation_type]
+
+                new_chain = mutation_func(chain=deepcopy(ind.chain), requirements=requirements,
+                                          chain_generation_params=chain_generation_params,
+                                          max_depth=max_depth)
 
                 is_correct_chain = constraint_function(new_chain, chain_generation_params.rules_for_constraint)
                 if is_correct_chain:
@@ -73,6 +79,7 @@ def mutation(types: List[MutationTypesEnum], chain_generation_params,
                                                                           operator_name=str(mutation_type),
                                                                           parent_chains=[ChainTemplate(ind.chain)]))
                     return new_individual
+
         elif mutation_type != MutationTypesEnum.none:
             raise ValueError(f'Required mutation type is not found: {mutation_type}')
         log.debug('Number of mutation attempts exceeded. Please check composer requirements for correctness.')

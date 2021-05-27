@@ -238,3 +238,14 @@ class Chain(GraphObject):
         self.nodes = []
         self.template = ChainTemplate(self, self.log)
         self.template.import_chain(path)
+
+    def __eq__(self, other) -> bool:
+        return self.root_node.descriptive_id == other.root_node.descriptive_id
+
+    def __str__(self):
+        description = {
+            'depth': self.depth,
+            'length': self.length,
+            'nodes': self.nodes,
+        }
+        return f'{description}'

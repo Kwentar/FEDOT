@@ -41,10 +41,13 @@ class ChainTemplate:
         self._chain_to_template(chain)
 
     def _chain_to_template(self, chain):
-        if chain.root_node:
-            self._extract_chain_structure(chain.root_node, 0, [])
-        else:
-            self.link_to_empty_chain = chain
+        try:
+            if chain.root_node:
+                self._extract_chain_structure(chain.root_node, 0, [])
+                return
+        except ValueError as ex:
+            self.log.info(f'Cannot export to template: {ex}')
+        self.link_to_empty_chain = chain
 
     def _extract_chain_structure(self, node: Node, operation_id: int, visited_nodes: List[Node]):
         """

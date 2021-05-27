@@ -1,11 +1,12 @@
+from copy import deepcopy
 from typing import List, Optional, Union
+from uuid import uuid4
 
 from fedot.core.composer.visualisation import GraphVisualiser
 from fedot.core.graphs.graph_node import GraphNode, PrimaryGraphNode
 from fedot.core.graphs.graph_operator import GraphOperator
 from fedot.core.log import Log, default_log
-from uuid import uuid4
-from copy import deepcopy
+
 ERROR_PREFIX = 'Invalid chain configuration:'
 
 
@@ -84,11 +85,14 @@ class GraphObject:
         GraphVisualiser().visualise(self, path)
 
     def __eq__(self, other) -> bool:
-        return self.root_node.descriptive_id == other.root_node.descriptive_id
+        # TODO more precise comparison (invariant to nodes order)
+        is_equal = all([n.descriptive_id == other_n.descriptive_id
+                        for n, other_n in zip(self.nodes, other.nodes)])
+
+        return is_equal
 
     def __str__(self):
         description = {
-            'depth': self.depth,
             'length': self.length,
             'nodes': self.nodes,
         }
@@ -121,7 +125,10 @@ class GraphObject:
             else:
                 return 1 + max([_depth_recursive(next_node) for next_node in node.nodes_from])
 
-        return _depth_recursive(self.root_node)
+        try:
+            return _depth_recursive(self.root_node)
+        except ValueError:
+            return -1
 
     def __copy__(self):
         cls = self.__class__
