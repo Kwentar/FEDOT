@@ -85,14 +85,16 @@ class GraphObject:
         GraphVisualiser().visualise(self, path)
 
     def __eq__(self, other) -> bool:
-        # TODO more precise comparison (invariant to nodes order)
-        is_equal = all([n.descriptive_id == other_n.descriptive_id
-                        for n, other_n in zip(self.nodes, other.nodes)])
+        if len(self.root_node) > 1:
+            return all([rn.descriptive_id == orn.descriptive_id for rn, orn
+                in zip(self.root_node, other.root_node)])
+        else:
+            return self.root_node.descriptive_id == other.root_node.descriptive_id
 
-        return is_equal
 
     def __str__(self):
         description = {
+            'depth': self.depth,
             'length': self.length,
             'nodes': self.nodes,
         }
@@ -107,9 +109,9 @@ class GraphObject:
             return None
         root = [node for node in self.nodes
                 if not any(self.operator.node_children(node))]
-        if len(root) > 1:
-            raise ValueError(f'{ERROR_PREFIX} More than 1 root_nodes in chain')
-        return root[0]
+        if len(root) == 1:
+            return root[0]
+        return root
 
     @property
     def length(self) -> int:
@@ -125,10 +127,10 @@ class GraphObject:
             else:
                 return 1 + max([_depth_recursive(next_node) for next_node in node.nodes_from])
 
-        try:
+        if isinstance(self.root_node, list):
+            return max([_depth_recursive(n) for n in self.root_node])
+        else:
             return _depth_recursive(self.root_node)
-        except ValueError:
-            return -1
 
     def __copy__(self):
         cls = self.__class__

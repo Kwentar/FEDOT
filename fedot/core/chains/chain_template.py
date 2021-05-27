@@ -45,7 +45,7 @@ class ChainTemplate:
             if chain.root_node:
                 self._extract_chain_structure(chain.root_node, 0, [])
                 return
-        except ValueError as ex:
+        except Exception as ex:
             self.log.info(f'Cannot export to template: {ex}')
         self.link_to_empty_chain = chain
 

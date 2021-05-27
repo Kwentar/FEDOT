@@ -244,7 +244,6 @@ class Chain(GraphObject):
 
     def __str__(self):
         description = {
-            'depth': self.depth,
             'length': self.length,
             'nodes': self.nodes,
         }
