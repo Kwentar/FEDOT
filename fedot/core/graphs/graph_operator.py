@@ -44,10 +44,6 @@ class GraphOperator:
             self._chain.nodes.remove(subtree_node)
 
     def update_node(self, old_node: GraphNode, new_node: GraphNode):
-        # if type(new_node) is not type(old_node):
-        #    raise ValueError(f"Can't update {old_node.__class__.__name__} "
-        #                     f"with {new_node.__class__.__name__}")
-
         self.actualise_old_node_children(old_node, new_node)
         if type(new_node) == type(old_node):
             new_node.nodes_from = old_node.nodes_from
@@ -118,3 +114,12 @@ class GraphOperator:
     def node_children(self, node) -> List[Optional[GraphNode]]:
         return [other_node for other_node in self._chain.nodes if isinstance(other_node, SecondaryGraphNode) and
                 node in other_node.nodes_from]
+
+    def connect_nodes(self, parent: GraphNode, child: GraphNode):
+        if not isinstance(child, PrimaryGraphNode):
+            if parent.descriptive_id not in [p.descriptive_id for p in child.nodes_from]:
+                child.nodes_from.append(parent)
+        else:
+            new_child = SecondaryGraphNode(child.operation)
+            new_child.nodes_from.append(parent)
+            self.update_node(child, new_child)

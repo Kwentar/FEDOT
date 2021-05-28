@@ -244,7 +244,18 @@ class Chain(GraphObject):
 
     def __str__(self):
         description = {
+            'depth': self.depth,
             'length': self.length,
             'nodes': self.nodes,
         }
         return f'{description}'
+
+    @property
+    def root_node(self) -> Optional[Node]:
+        if len(self.nodes) == 0:
+            return None
+        root = [node for node in self.nodes
+                if not any(self.operator.node_children(node))]
+        if len(root) > 1:
+            raise ValueError(f'{ERROR_PREFIX} More than 1 root_nodes in chain')
+        return root[0]

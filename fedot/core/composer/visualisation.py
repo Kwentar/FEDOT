@@ -75,7 +75,7 @@ class GraphVisualiser:
         nx_graph, node_labels = in_graph_converter_function(chain=graph)
         word_labels = [str(node) for node in node_labels.values()]
 
-        pos = nx.spring_layout(nx_graph)
+        pos = nx.circular_layout(nx_graph)
 
         min_size = 3000
         node_sizes = [min_size for _ in word_labels]

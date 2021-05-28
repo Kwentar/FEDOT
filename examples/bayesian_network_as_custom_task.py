@@ -42,16 +42,12 @@ def _has_no_duplicates(graph):
 
 def custom_mutation(chain: GraphObject, requirements: GPComposerRequirements,
                     chain_generation_params: ChainGenerationParams, max_depth: int = None):
-    rid = random.choice(range(len(chain.nodes)))
-    random_node = chain.nodes[rid]
-    other_random_node = chain.nodes[random.choice(range(len(chain.nodes)))]
-    if random_node.operation != other_random_node.operation:
-        if not isinstance(random_node, PrimaryGraphNode):
-            chain.nodes[rid].nodes_from.append(other_random_node)
-        else:
-            chain.operator.update_node(chain.nodes[rid],
-                                       SecondaryGraphNode(random_node.operation,
-                                                          nodes_from=[other_random_node]))
+    for _ in range(random.randint(1, 5)):
+        rid = random.choice(range(len(chain.nodes)))
+        random_node = chain.nodes[rid]
+        other_random_node = chain.nodes[random.choice(range(len(chain.nodes)))]
+        if random_node.operation != other_random_node.operation:
+            chain.operator.connect_nodes(random_node, other_random_node)
     return chain
 
 

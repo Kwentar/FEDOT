@@ -45,7 +45,8 @@ class ComposingHistory:
                 new_ind = deepcopy(ind)
                 new_ind.chain = self._convert_chain_to_template(ind.chain)
                 new_individuals.append(new_ind)
-                chains_comp_time.append(ind.chain.computation_time)
+                if hasattr(ind.chain, 'computation_time'):
+                    chains_comp_time.append(ind.chain.computation_time)
                 parent_operators.append(ind.parent_operators)
             self.individuals.append(new_individuals)
             self.chains_comp_time_history.append(chains_comp_time)

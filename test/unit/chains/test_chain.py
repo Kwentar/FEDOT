@@ -286,18 +286,20 @@ def test_chain_repr():
     assert repr(chain) == expected_chain_description
 
 
-def test_update_node_in_chain_raise_exception():
+def test_update_node_in_chain_correct():
     first = PrimaryNode(operation_type='logit')
     final = SecondaryNode(operation_type='xgboost', nodes_from=[first])
 
     chain = Chain()
     chain.add_node(final)
-    replacing_node = SecondaryNode('logit')
+    new_node = PrimaryNode('svc')
+    replacing_node = SecondaryNode('logit', nodes_from=[new_node])
 
-    with pytest.raises(ValueError) as exc:
-        chain.update_node(old_node=first, new_node=replacing_node)
+    chain.update_node(old_node=first, new_node=replacing_node)
 
-    assert str(exc.value) == "Can't update PrimaryNode with SecondaryNode"
+    assert replacing_node in chain.nodes
+    assert new_node in chain.nodes
+    assert first not in chain.nodes
 
 
 def test_delete_node_with_redirection():
