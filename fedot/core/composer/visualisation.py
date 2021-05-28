@@ -42,10 +42,14 @@ class GraphVisualiser:
 
     def draw_single_graph(self, graph: 'GraphObject', ax=None, title=None,
                           in_graph_converter_function=chain_as_nx_graph):
-        pos, node_labels = self._draw_tree(graph, ax, title, in_graph_converter_function)
+        if type(graph).__name__ == 'Chain':
+            pos, node_labels = self._draw_tree(graph, ax, title, in_graph_converter_function)
+        else:
+            pos, node_labels = self._draw_dag(graph, ax, title, in_graph_converter_function)
+
         self._draw_labels(pos, node_labels, ax)
 
-    def _draw_tree(self, graph: 'GraphObject', ax=None, title=None,
+    def _draw_tree(self, graph: 'Chain', ax=None, title=None,
                    in_graph_converter_function=chain_as_nx_graph):
         nx_graph, node_labels = in_graph_converter_function(chain=graph)
         word_labels = [str(node) for node in node_labels.values()]
@@ -56,6 +60,23 @@ class GraphVisualiser:
             root = 0
         minimum_spanning_tree = nx.minimum_spanning_tree(nx_graph.to_undirected())
         pos = hierarchy_pos(minimum_spanning_tree, root=root)
+        min_size = 3000
+        node_sizes = [min_size for _ in word_labels]
+        if title:
+            plt.title(title)
+        colors = colors_by_node_labels(node_labels)
+        nx.draw(nx_graph, pos=pos, with_labels=False,
+                node_size=node_sizes, width=2.0,
+                node_color=colors, cmap='Set3', ax=ax)
+        return pos, node_labels
+
+    def _draw_dag(self, graph: 'GraphObject', ax=None, title=None,
+                  in_graph_converter_function=chain_as_nx_graph):
+        nx_graph, node_labels = in_graph_converter_function(chain=graph)
+        word_labels = [str(node) for node in node_labels.values()]
+
+        pos = nx.spring_layout(nx_graph)
+
         min_size = 3000
         node_sizes = [min_size for _ in word_labels]
         if title:

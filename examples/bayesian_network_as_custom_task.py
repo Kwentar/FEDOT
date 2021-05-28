@@ -25,6 +25,7 @@ np.random.seed(1)
 
 
 def custom_metric(network: GraphObject, data: pd.DataFrame):
+    network.show()
     nodes = data.columns.to_list()
     _, labels = chain_as_nx_graph(network)
     existing_variables_num = -len([label for label in list(labels.values()) if str(label) in nodes])
@@ -44,12 +45,13 @@ def custom_mutation(chain: GraphObject, requirements: GPComposerRequirements,
     rid = random.choice(range(len(chain.nodes)))
     random_node = chain.nodes[rid]
     other_random_node = chain.nodes[random.choice(range(len(chain.nodes)))]
-    if random_node != other_random_node:
+    if random_node.operation != other_random_node.operation:
         if not isinstance(random_node, PrimaryGraphNode):
-            chain.nodes[rid].nodes_from = [other_random_node]
+            chain.nodes[rid].nodes_from.append(other_random_node)
         else:
-            chain.nodes[rid] = SecondaryGraphNode(random_node.operation,
-                                                  nodes_from=[other_random_node])
+            chain.operator.update_node(chain.nodes[rid],
+                                       SecondaryGraphNode(random_node.operation,
+                                                          nodes_from=[other_random_node]))
     return chain
 
 
@@ -64,8 +66,8 @@ def run_bayesian(max_lead_time: datetime.timedelta = datetime.timedelta(minutes=
 
     requirements = GPComposerRequirements(
         primary=nodes_types,
-        secondary=nodes_types, max_arity=2,
-        max_depth=3, pop_size=20, num_of_generations=50,
+        secondary=nodes_types, max_arity=10,
+        max_depth=10, pop_size=20, num_of_generations=50,
         crossover_prob=0.8, mutation_prob=0.9, max_lead_time=max_lead_time)
 
     optimiser_parameters = GPChainOptimiserParameters(

@@ -44,12 +44,13 @@ class GraphOperator:
             self._chain.nodes.remove(subtree_node)
 
     def update_node(self, old_node: GraphNode, new_node: GraphNode):
-        if type(new_node) is not type(old_node):
-            raise ValueError(f"Can't update {old_node.__class__.__name__} "
-                             f"with {new_node.__class__.__name__}")
+        # if type(new_node) is not type(old_node):
+        #    raise ValueError(f"Can't update {old_node.__class__.__name__} "
+        #                     f"with {new_node.__class__.__name__}")
 
         self.actualise_old_node_children(old_node, new_node)
-        new_node.nodes_from = old_node.nodes_from
+        if type(new_node) == type(old_node):
+            new_node.nodes_from = old_node.nodes_from
         self._chain.nodes.remove(old_node)
         self._chain.nodes.append(new_node)
         self.sort_nodes()
@@ -108,7 +109,10 @@ class GraphOperator:
 
     def sort_nodes(self):
         """layer by layer sorting"""
-        nodes = self._chain.root_node.ordered_subnodes_hierarchy()
+        if not isinstance(self._chain.root_node, list):
+            nodes = self._chain.root_node.ordered_subnodes_hierarchy()
+        else:
+            nodes = self._chain.nodes
         self._chain.nodes = nodes
 
     def node_children(self, node) -> List[Optional[GraphNode]]:

@@ -42,9 +42,11 @@ class ChainTemplate:
 
     def _chain_to_template(self, chain):
         try:
-            if chain.root_node:
+            if isinstance(chain.root_node, list):
+                self._extract_chain_structure(chain.root_node[0], 0, [])
+            else:
                 self._extract_chain_structure(chain.root_node, 0, [])
-                return
+            return
         except Exception as ex:
             self.log.info(f'Cannot export to template: {ex}')
         self.link_to_empty_chain = chain

@@ -85,12 +85,16 @@ class GraphObject:
         GraphVisualiser().visualise(self, path)
 
     def __eq__(self, other) -> bool:
-        if len(self.root_node) > 1:
-            return all([rn.descriptive_id == orn.descriptive_id for rn, orn
-                in zip(self.root_node, other.root_node)])
+        if isinstance(self.root_node, list):
+            if isinstance(other.root_node, list):
+                return set([rn.descriptive_id for rn in self.root_node]) == \
+                       set([rn.descriptive_id for rn in other.root_node])
+            else:
+                return False
+        elif isinstance(other.root_node, list):
+            return False
         else:
             return self.root_node.descriptive_id == other.root_node.descriptive_id
-
 
     def __str__(self):
         description = {
