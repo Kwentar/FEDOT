@@ -325,8 +325,7 @@ def test_delete_primary_node():
     third = SecondaryNode(operation_type='knn', nodes_from=[first])
     final = SecondaryNode(operation_type='xgboost',
                           nodes_from=[second, third])
-    chain = Chain()
-    chain.add_node(final)
+    chain = Chain(final)
 
     # when
     chain.delete_node(first)

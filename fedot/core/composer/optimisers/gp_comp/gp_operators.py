@@ -3,13 +3,11 @@ from random import choice, randint
 from typing import (Any, Callable, List, Tuple)
 
 from fedot.core.composer.constraint import constraint_function
+from fedot.core.composer.optimisers.graph import OptGraph, OptNode
 from fedot.core.composer.optimisers.utils.multi_objective_fitness import MultiObjFitness
 
 
-def random_chain(chain_generation_params, requirements, max_depth=None) -> Any:
-    secondary_node_func = chain_generation_params.secondary_node_func
-    primary_node_func = chain_generation_params.primary_node_func
-    chain_class = chain_generation_params.chain_class
+def random_chain(graph_generation_params, requirements, max_depth=None) -> Any:
     max_depth = max_depth if max_depth else requirements.max_depth
 
     def chain_growth(chain: Any, node_parent: Any):
@@ -19,11 +17,13 @@ def random_chain(chain_generation_params, requirements, max_depth=None) -> Any:
             is_max_depth_exceeded = height >= max_depth - 1
             is_primary_node_selected = height < max_depth - 1 and randint(0, 1)
             if is_max_depth_exceeded or is_primary_node_selected:
-                primary_node = primary_node_func(operation_type=choice(requirements.primary))
+                primary_node = OptNode(nodes_from=None,
+                                       operation_type=choice(requirements.primary))
                 node_parent.nodes_from.append(primary_node)
                 chain.add_node(primary_node)
             else:
-                secondary_node = secondary_node_func(operation_type=choice(requirements.secondary))
+                secondary_node = OptNode(nodes_from=[],
+                                         operation_type=choice(requirements.secondary))
                 chain.add_node(secondary_node)
                 node_parent.nodes_from.append(secondary_node)
                 chain_growth(chain, secondary_node)
@@ -31,12 +31,12 @@ def random_chain(chain_generation_params, requirements, max_depth=None) -> Any:
     is_correct_chain = False
     chain = None
     while not is_correct_chain:
-        chain = chain_class()
-        chain_root = secondary_node_func(operation_type=choice(requirements.secondary))
+        chain = OptGraph()
+        chain_root = OptNode(nodes_from=[],
+                             operation_type=choice(requirements.secondary))
         chain.add_node(chain_root)
         chain_growth(chain, chain_root)
-        is_correct_chain = constraint_function(chain,
-                                               chain_generation_params.rules_for_constraint)
+        is_correct_chain = constraint_function(chain, graph_generation_params)
     return chain
 
 
@@ -79,11 +79,12 @@ def num_of_parents_in_crossover(num_of_final_inds: int) -> int:
     return num_of_final_inds if not num_of_final_inds % 2 else num_of_final_inds + 1
 
 
-def evaluate_individuals(individuals_set, objective_function, is_multi_objective: bool, timer=None):
+def evaluate_individuals(individuals_set, objective_function, graph_generation_params,
+                         is_multi_objective: bool, timer=None):
     num_of_successful_evals = 0
     reversed_set = individuals_set[::-1]
     for ind_num, ind in enumerate(reversed_set):
-        ind.fitness = calculate_objective(ind.chain, objective_function, is_multi_objective)
+        ind.fitness = calculate_objective(ind.graph, objective_function, is_multi_objective, graph_generation_params)
         if ind.fitness is None:
             individuals_set.remove(ind)
         else:
@@ -97,8 +98,9 @@ def evaluate_individuals(individuals_set, objective_function, is_multi_objective
         raise AttributeError('Too much fitness evaluation errors. Composing stopped.')
 
 
-def calculate_objective(ind: Any, objective_function: Callable, is_multi_objective: bool) -> Any:
-    calculated_fitness = objective_function(ind)
+def calculate_objective(graph: OptGraph, objective_function: Callable, is_multi_objective: bool,
+                        graph_generation_params) -> Any:
+    calculated_fitness = objective_function(graph_generation_params.adapter.restore(graph))
     if calculated_fitness is None:
         return None
     else:

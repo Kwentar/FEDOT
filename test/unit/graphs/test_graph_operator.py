@@ -1,6 +1,6 @@
 from fedot.core.chains.chain import Chain
 from fedot.core.chains.node import PrimaryNode, SecondaryNode
-from fedot.core.graphs.graph_operator import GraphOperator
+from fedot.core.dag.graph_operator import GraphOperator
 
 
 def get_chain():

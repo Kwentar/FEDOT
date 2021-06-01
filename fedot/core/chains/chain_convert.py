@@ -3,7 +3,7 @@ from uuid import uuid4
 import networkx as nx
 
 
-def chain_as_nx_graph(chain: 'GraphObject'):
+def chain_as_nx_graph(chain: 'ChainStructure'):
     """ Convert FEDOT chain into networkx graph object """
     graph = nx.DiGraph()
     node_labels = {}

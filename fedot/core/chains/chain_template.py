@@ -43,6 +43,7 @@ class ChainTemplate:
     def _chain_to_template(self, chain):
         try:
             if isinstance(chain.root_node, list):
+                #TODO improve for graph with several roots
                 self._extract_chain_structure(chain.root_node[0], 0, [])
             else:
                 self._extract_chain_structure(chain.root_node, 0, [])

@@ -10,6 +10,7 @@ from fedot.core.composer.composing_history import ParentOperator
 from fedot.core.composer.constraint import constraint_function
 from fedot.core.composer.optimisers.gp_comp.gp_operators import random_chain
 from fedot.core.composer.optimisers.gp_comp.individual import Individual
+from fedot.core.composer.optimisers.graph import OptNode
 from fedot.core.log import Log
 from fedot.core.utils import ComparableEnum as Enum
 
@@ -52,7 +53,7 @@ def will_mutation_be_applied(mutation_prob, mutation_type) -> bool:
     return not (random() > mutation_prob or mutation_type == MutationTypesEnum.none)
 
 
-def mutation(types: List[Union[MutationTypesEnum, Callable]], chain_generation_params,
+def mutation(types: List[Union[MutationTypesEnum, Callable]], graph_generation_params,
              ind: Individual, requirements, log: Log,
              max_depth: int = None) -> Any:
     """ Function apply mutation operator to chain """
@@ -68,16 +69,17 @@ def mutation(types: List[Union[MutationTypesEnum, Callable]], chain_generation_p
                 else:
                     mutation_func = mutation_by_type[mutation_type]
 
-                new_chain = mutation_func(chain=deepcopy(ind.chain), requirements=requirements,
-                                          chain_generation_params=chain_generation_params,
+                new_chain = mutation_func(chain=deepcopy(ind.graph), requirements=requirements,
+                                          graph_generation_params=graph_generation_params,
                                           max_depth=max_depth)
 
-                is_correct_chain = constraint_function(new_chain, chain_generation_params.rules_for_constraint)
+                is_correct_chain = constraint_function(new_chain,
+                                                       graph_generation_params)
                 if is_correct_chain:
                     new_individual = Individual(new_chain)
                     new_individual.parent_operators.append(ParentOperator(operator_type='mutation',
                                                                           operator_name=str(mutation_type),
-                                                                          parent_chains=[ChainTemplate(ind.chain)]))
+                                                                          parent_chains=[ChainTemplate(ind.graph)]))
                     return new_individual
 
         elif mutation_type != MutationTypesEnum.none:
@@ -86,7 +88,7 @@ def mutation(types: List[Union[MutationTypesEnum, Callable]], chain_generation_p
     return deepcopy(ind)
 
 
-def simple_mutation(chain: Any, requirements, chain_generation_params, max_depth: int = None) -> Any:
+def simple_mutation(chain: Any, requirements, graph_generation_params, max_depth: int = None) -> Any:
     """
     This type of mutation is passed over all nodes of the tree started from the root node and changes
     nodes’ operations with probability - 'node mutation probability' which is initialised inside the function
@@ -98,14 +100,13 @@ def simple_mutation(chain: Any, requirements, chain_generation_params, max_depth
     def replace_node_to_random_recursive(node: Any) -> Any:
         if node.nodes_from:
             if random() < node_mutation_probability:
-                secondary_node = chain_generation_params.secondary_node_func(choice(requirements.secondary),
-                                                                             nodes_from=node.nodes_from)
+                secondary_node = OptNode(operation_type=choice(requirements.secondary), nodes_from=node.nodes_from)
                 chain.update_node(node, secondary_node)
             for child in node.nodes_from:
                 replace_node_to_random_recursive(child)
         else:
             if random() < node_mutation_probability:
-                primary_node = chain_generation_params.primary_node_func(operation_type=choice(requirements.primary))
+                primary_node = OptNode(operation_type=choice(requirements.primary))
                 chain.update_node(node, primary_node)
 
     replace_node_to_random_recursive(chain.root_node)
@@ -113,7 +114,7 @@ def simple_mutation(chain: Any, requirements, chain_generation_params, max_depth
     return chain
 
 
-def growth_mutation(chain: Any, requirements, chain_generation_params, max_depth: int, local_growth=True) -> Any:
+def growth_mutation(chain: Any, requirements, graph_generation_params, max_depth: int, local_growth=True) -> Any:
     """
     This mutation selects a random node in a tree, generates new subtree, and replaces the selected node's subtree.
     :param local_growth: if true then maximal depth of new subtree equals depth of tree located in
@@ -130,19 +131,19 @@ def growth_mutation(chain: Any, requirements, chain_generation_params, max_depth
         is_primary_node_selected = randint(0, 1) and \
                                    not chain.operator.distance_to_root_level(node_from_chain) < max_depth
     if is_primary_node_selected:
-        new_subtree = chain_generation_params.primary_node_func(operation_type=choice(requirements.primary))
+        new_subtree = OptNode(operation_type=choice(requirements.primary))
     else:
         if local_growth:
             max_depth = node_from_chain.distance_to_primary_level
         else:
             max_depth = max_depth - chain.operator.distance_to_root_level(node_from_chain)
-        new_subtree = random_chain(chain_generation_params=chain_generation_params, requirements=requirements,
+        new_subtree = random_chain(graph_generation_params=graph_generation_params, requirements=requirements,
                                    max_depth=max_depth).root_node
     chain.update_subtree(node_from_chain, new_subtree)
     return chain
 
 
-def reduce_mutation(chain: Any, requirements, chain_generation_params, max_depth: int = None) -> Any:
+def reduce_mutation(chain: Any, requirements, graph_generation_params, max_depth: int = None) -> Any:
     """
     Selects a random node in a tree, then removes its subtree. If the current arity of the node's
     parent is more than the specified minimal arity, then the selected node is also removed.
@@ -156,7 +157,7 @@ def reduce_mutation(chain: Any, requirements, chain_generation_params, max_depth
     if is_possible_to_delete:
         chain.delete_subtree(node_to_del)
     else:
-        primary_node = chain_generation_params.primary_node_func(operation_type=choice(requirements.primary))
+        primary_node = OptNode(operation_type=choice(requirements.primary))
         chain.update_subtree(node_to_del, primary_node)
     return chain
 

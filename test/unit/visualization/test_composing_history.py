@@ -11,7 +11,7 @@ def create_individual():
     second = PrimaryNode(operation_type='lda')
     final = SecondaryNode(operation_type='knn', nodes_from=[first, second])
 
-    indiviual = Individual(chain=Chain(final))
+    indiviual = Individual(graph=Chain(final))
     indiviual.fitness = 1
     return indiviual
 
@@ -43,7 +43,7 @@ def test_convert_chain_to_chain_template():
     history = generate_history(generations_quantity, pop_size)
     for gen in range(generations_quantity):
         for ind in range(pop_size):
-            assert type(history.individuals[gen][ind].chain) == ChainTemplate
+            assert type(history.individuals[gen][ind].graph) == ChainTemplate
 
 
 def test_prepare_for_visualisation():

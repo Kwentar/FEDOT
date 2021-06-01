@@ -3,31 +3,24 @@ from typing import List, Optional, Union
 from uuid import uuid4
 
 from fedot.core.composer.visualisation import GraphVisualiser
-from fedot.core.graphs.graph_node import GraphNode, PrimaryGraphNode
-from fedot.core.graphs.graph_operator import GraphOperator
+from fedot.core.dag.graph_operator import GraphOperator
+from fedot.core.dag.vertex import GraphVertex
 from fedot.core.log import Log, default_log
 
 ERROR_PREFIX = 'Invalid chain configuration:'
 
 
-class GraphObject:
+class Graph:
     """
     Base class used for composite model structure definition
 
-    :param nodes: GraphNode object(s)
+    :param nodes: StructNode object(s)
     :param log: Log object to record messages
     """
 
-    def __init__(self, nodes: Optional[Union[GraphNode, List[GraphNode]]] = None,
-                 log: Log = None):
+    def __init__(self, nodes: Optional[Union[GraphVertex, List[GraphVertex]]] = None):
         self.uid = str(uuid4())
         self.nodes = []
-        self.log = log
-        if not log:
-            self.log = default_log(__name__)
-        else:
-            self.log = log
-
         self.operator = GraphOperator(self)
 
         if nodes:
@@ -37,7 +30,7 @@ class GraphObject:
             else:
                 self.add_node(nodes)
 
-    def add_node(self, new_node: GraphNode):
+    def add_node(self, new_node: GraphVertex):
         """
         Add new node to the Chain
 
@@ -45,35 +38,35 @@ class GraphObject:
         """
         self.operator.add_node(new_node)
 
-    def update_node(self, old_node: GraphNode, new_node: GraphNode):
+    def update_node(self, old_node: GraphVertex, new_node: GraphVertex):
         """
         Replace old_node with new one.
 
-        :param old_node: GraphNode object to replace
-        :param new_node: GraphNode object to replace
+        :param old_node: StructNode object to replace
+        :param new_node: StructNode object to replace
         """
 
         self.operator.update_node(old_node, new_node)
 
-    def update_subtree(self, old_subroot: GraphNode, new_subroot: GraphNode):
+    def update_subtree(self, old_subroot: GraphVertex, new_subroot: GraphVertex):
         """
         Replace the subtrees with old and new nodes as subroots
 
-        :param old_subroot: GraphNode object to replace
-        :param new_subroot: GraphNode object to replace
+        :param old_subroot: StructNode object to replace
+        :param new_subroot: StructNode object to replace
         """
         self.operator.update_subtree(old_subroot, new_subroot)
 
-    def delete_node(self, node: GraphNode):
+    def delete_node(self, node: GraphVertex):
         """
         Delete chosen node redirecting all its parents to the child.
 
-        :param node: GraphNode object to delete
+        :param node: StructNode object to delete
         """
 
         self.operator.delete_node(node)
 
-    def delete_subtree(self, subroot: GraphNode):
+    def delete_subtree(self, subroot: GraphVertex):
         """
         Delete the subtree with node as subroot.
 
@@ -111,11 +104,10 @@ class GraphObject:
     def root_node(self):
         if len(self.nodes) == 0:
             return None
-        root = [node for node in self.nodes
-                if not any(self.operator.node_children(node))]
-        if len(root) == 1:
-            return root[0]
-        return root
+        roots = self.operator.root_nodes()
+        if len(roots) == 1:
+            return roots[0]
+        return roots
 
     @property
     def length(self) -> int:
@@ -126,7 +118,7 @@ class GraphObject:
         def _depth_recursive(node):
             if node is None:
                 return 0
-            if isinstance(node, PrimaryGraphNode):
+            if node.nodes_from is None or len(node.nodes_from) == 0:
                 return 1
             else:
                 return 1 + max([_depth_recursive(next_node) for next_node in node.nodes_from])

@@ -27,7 +27,7 @@ class GraphVisualiser:
         self.temp_path = os.path.join(default_data_dir, 'composing_history')
         self.log = log
 
-    def visualise(self, chain: 'GraphObject', save_path: Optional[str] = None):
+    def visualise(self, chain: 'ChainStructure', save_path: Optional[str] = None):
         try:
             fig, axs = plt.subplots(figsize=(9, 9))
             fig.suptitle('Current chain')
@@ -40,7 +40,7 @@ class GraphVisualiser:
         except Exception as ex:
             self.log.error(f'Visualisation failed with {ex}')
 
-    def draw_single_graph(self, graph: 'GraphObject', ax=None, title=None,
+    def draw_single_graph(self, graph: 'ChainStructure', ax=None, title=None,
                           in_graph_converter_function=chain_as_nx_graph):
         if type(graph).__name__ == 'Chain':
             pos, node_labels = self._draw_tree(graph, ax, title, in_graph_converter_function)
@@ -70,7 +70,7 @@ class GraphVisualiser:
                 node_color=colors, cmap='Set3', ax=ax)
         return pos, node_labels
 
-    def _draw_dag(self, graph: 'GraphObject', ax=None, title=None,
+    def _draw_dag(self, graph: 'ChainStructure', ax=None, title=None,
                   in_graph_converter_function=chain_as_nx_graph):
         nx_graph, node_labels = in_graph_converter_function(chain=graph)
         word_labels = [str(node) for node in node_labels.values()]

@@ -1,5 +1,6 @@
 import math
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import partial
 from typing import (Any, Callable, List, Optional, Tuple, Union)
 
@@ -7,6 +8,7 @@ import numpy as np
 
 from fedot.core.composer.composing_history import ComposingHistory
 from fedot.core.composer.constraint import constraint_function
+from fedot.core.composer.optimisers.adapters import BaseOptimizationAdapter, ChainAdapter
 from fedot.core.composer.optimisers.gp_comp.gp_operators import calculate_objective, clean_operators_history, \
     duplicates_filtration, evaluate_individuals, num_of_parents_in_crossover, random_chain
 from fedot.core.composer.optimisers.gp_comp.individual import Individual
@@ -80,25 +82,24 @@ class GPChainOptimiserParameters:
                                    MutationTypesEnum.local_growth]
 
 
-class GPChainOptimiser:
+class GPGraphOptimiser:
     """
     Base class of evolutionary chain optimiser
 
-    :param initial_chain: chain which was initialized outside the optimiser
+    :param initial_graph: chain which was initialized outside the optimiser
     :param requirements: composer requirements
-    :param chain_generation_params: parameters for new chain generation
+    :param graph_generation_params: parameters for new chain generation
     :param metrics: quality metrics
     :param parameters: parameters of chain optimiser
     :param log: optional parameter for log object
     :param archive_type: type of archive with best individuals
     """
 
-    def __init__(self, initial_chain, requirements, chain_generation_params, metrics: List[MetricsEnum],
+    def __init__(self, initial_graph, requirements,
+                 graph_generation_params: 'GraphGenerationParams',
+                 metrics: List[MetricsEnum],
                  parameters: Optional[GPChainOptimiserParameters] = None, log: Log = None, archive_type=None):
-        self.chain_generation_params = chain_generation_params
-        self.primary_node_func = self.chain_generation_params.primary_node_func
-        self.secondary_node_func = self.chain_generation_params.secondary_node_func
-        self.chain_class = self.chain_generation_params.chain_class
+        self.graph_generation_params = graph_generation_params
         self.requirements = requirements
         self.archive = archive_type
         self.parameters = GPChainOptimiserParameters() if parameters is None else parameters
@@ -114,25 +115,22 @@ class GPChainOptimiser:
 
         generation_depth = self.max_depth if self.requirements.start_depth is None else self.requirements.start_depth
 
-        self.chain_generation_function = partial(random_chain, chain_generation_params=self.chain_generation_params,
+        self.chain_generation_function = partial(random_chain, graph_generation_params=self.graph_generation_params,
                                                  requirements=self.requirements, max_depth=generation_depth)
-
-        necessary_attrs = ['add_node', 'root_node', 'update_node']
-        if not all([hasattr(self.chain_class, attr) for attr in necessary_attrs]):
-            ex = f'Object chain_class has no required attributes for gp_optimizer'
-            self.log.error(ex)
-            raise AttributeError(ex)
 
         if not self.requirements.pop_size:
             self.requirements.pop_size = 10
 
         self.population = None
-        if initial_chain:
-            if type(initial_chain) != list:
+        if initial_graph:
+            if type(initial_graph) != list:
+                initial_graph = graph_generation_params.adapter.adapt(initial_graph)
                 self.population = \
-                    [Individual(chain=deepcopy(initial_chain)) for _ in range(self.requirements.pop_size)]
+                    [Individual(graph=deepcopy(initial_graph)) for _ in range(self.requirements.pop_size)]
             else:
-                self.population = [Individual(chain=c) for c in initial_chain]
+                self.population = \
+                    [Individual(graph=graph_generation_params.adapter.adapt(o))
+                     for o in initial_graph]
 
         self.history = ComposingHistory(metrics)
 
@@ -175,7 +173,7 @@ class GPChainOptimiser:
                     regularized_population(reg_type=self.parameters.regularization_type,
                                            population=self.population,
                                            objective_function=objective_function,
-                                           chain_generation_params=self.chain_generation_params.chain_class,
+                                           graph_generation_params=self.graph_generation_params,
                                            timer=t)
 
                 if self.parameters.multi_objective:
@@ -220,7 +218,9 @@ class GPChainOptimiser:
             self.log.info('Result:')
             self.log_info_about_best()
 
-        output = [ind.chain for ind in best] if isinstance(best, list) else best.chain
+        output = [self.graph_generation_params.adapter.restore(ind.graph) for ind in best] if isinstance(best, list) \
+            else self.graph_generation_params.adapter.restore(best.graph)
+
         return output
 
     @property
@@ -285,9 +285,9 @@ class GPChainOptimiser:
         simpler_equivalents = {}
         for i in sort_inds:
             is_fitness_equals_to_best = is_equal_fitness(best_ind.fitness, individuals[i].fitness)
-            has_less_num_of_operations_than_best = individuals[i].chain.length < best_ind.chain.length
+            has_less_num_of_operations_than_best = individuals[i].graph.length < best_ind.graph.length
             if is_fitness_equals_to_best and has_less_num_of_operations_than_best:
-                simpler_equivalents[i] = len(individuals[i].chain.nodes)
+                simpler_equivalents[i] = len(individuals[i].graph.nodes)
         return simpler_equivalents
 
     def reproduce(self, selected_individual_first, selected_individual_second=None) -> Tuple[Any]:
@@ -297,12 +297,12 @@ class GPChainOptimiser:
                                  selected_individual_second,
                                  crossover_prob=self.requirements.crossover_prob,
                                  max_depth=self.max_depth, log=self.log,
-                                 chain_generation_params=self.chain_generation_params)
+                                 graph_generation_params=self.graph_generation_params)
         else:
             new_inds = [selected_individual_first]
 
         new_inds = tuple([mutation(types=self.parameters.mutation_types,
-                                   chain_generation_params=self.chain_generation_params,
+                                   graph_generation_params=self.graph_generation_params,
                                    ind=new_ind, requirements=self.requirements,
                                    max_depth=self.max_depth, log=self.log) for new_ind in new_inds])
         for ind in new_inds:
@@ -315,7 +315,7 @@ class GPChainOptimiser:
         while len(pop) < pop_size:
             iter_number += 1
             chain = self.chain_generation_function()
-            if constraint_function(chain, self.chain_generation_params.rules_for_constraint):
+            if constraint_function(chain, self.graph_generation_params):
                 pop.append(Individual(chain))
 
             if iter_number > MAX_NUM_OF_GENERATED_INDS:
@@ -383,5 +383,18 @@ class GPChainOptimiser:
         return best
 
     def _evaluate_individuals(self, individuals_set, objective_function, timer=None):
-        evaluate_individuals(individuals_set=individuals_set, objective_function=objective_function, timer=timer,
-                             is_multi_objective=self.parameters.multi_objective)
+        evaluate_individuals(individuals_set=individuals_set, objective_function=objective_function,
+                             graph_generation_params=self.graph_generation_params,
+                             timer=timer, is_multi_objective=self.parameters.multi_objective)
+
+
+@dataclass
+class GraphGenerationParams:
+    """
+    This dataclass is for defining the parameters using in graph generation process
+
+    :param adapter: the function for processing of external object that should be optimized
+    :param rules_for_constraint: set of constraints
+    """
+    adapter: BaseOptimizationAdapter = ChainAdapter()
+    rules_for_constraint: Optional[List[Callable]] = None

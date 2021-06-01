@@ -3,16 +3,18 @@ from typing import List
 
 from fedot.core.chains.chain import Chain
 from fedot.core.composer.composing_history import ParentOperator
-from fedot.core.graphs.graph import GraphObject
+from fedot.core.composer.optimisers.graph import OptGraph
+
+ERROR_PREFIX = 'Invalid chain configuration:'
 
 
 class Individual:
-    def __init__(self, chain: GraphObject, fitness: List[float] = None,
+    def __init__(self, graph: 'OptGraph', fitness: List[float] = None,
                  parent_operators: List[ParentOperator] = None):
         self.parent_operators = parent_operators if parent_operators is not None else []
         self.fitness = fitness
 
-        self.chain = _release_chain_resources(chain) if isinstance(chain, Chain) else chain
+        self.graph = _release_chain_resources(graph) if isinstance(graph, Chain) else graph
 
 
 def _release_chain_resources(chain: Chain):

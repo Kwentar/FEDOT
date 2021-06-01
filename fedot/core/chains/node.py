@@ -1,14 +1,14 @@
-from copy import copy
 from typing import List, Optional
 
-from fedot.core.graphs.node_operator import NodeOperator
+from fedot.core.dag.node_operator import NodeOperator
+from fedot.core.dag.vertex import GraphVertex
 from fedot.core.data.data import InputData, OutputData
-from fedot.core.graphs.graph_node import GraphNode, PrimaryGraphNode, SecondaryGraphNode
+from fedot.core.log import Log, default_log
 from fedot.core.operations.factory import OperationFactory
 from fedot.core.operations.operation import Operation
 
 
-class Node(GraphNode):
+class Node(GraphVertex):
     """
     Base class for Node definition in Chain structure
 
@@ -21,8 +21,13 @@ class Node(GraphNode):
 
     def __init__(self, nodes_from: Optional[List['Node']],
                  operation_type: [str, 'Operation'],
-                 log=None):
-        GraphNode.__init__(self, nodes_from, operation_type, log)
+                 log: Log = None):
+        super().__init__(nodes_from, operation_type)
+
+        if not log:
+            self.log = default_log(__name__)
+        else:
+            self.log = log
 
         self._fitted_operation = None
         self._operator = NodeOperator(self)
@@ -34,32 +39,6 @@ class Node(GraphNode):
             # Define appropriate operation or data operation
             self.operation_factory = OperationFactory(operation_name=operation_type)
             self.operation = self.operation_factory.get_operation()
-
-    @property
-    def descriptive_id(self):
-        return self._descriptive_id_recursive(visited_nodes=[])
-
-    def _descriptive_id_recursive(self, visited_nodes):
-        """
-        Method returns verbal description of the operation in the node
-        and its parameters
-        """
-
-        node_label = self.operation.description
-        full_path = ''
-        if self in visited_nodes:
-            return 'ID_CYCLED'
-        visited_nodes.append(self)
-        if self.nodes_from:
-            previous_items = []
-            for parent_node in self.nodes_from:
-                previous_items.append(f'{parent_node._descriptive_id_recursive(copy(visited_nodes))};')
-            previous_items.sort()
-            previous_items_str = ';'.join(previous_items)
-
-            full_path += f'({previous_items_str})'
-        full_path += f'/{node_label}'
-        return full_path
 
     @property
     def fitted_operation(self):
@@ -119,7 +98,7 @@ class Node(GraphNode):
             self.operation.params = params
 
 
-class PrimaryNode(Node, PrimaryGraphNode):
+class PrimaryNode(Node):
     """
     The class defines the interface of Primary nodes where initial task data is located
 
@@ -129,8 +108,7 @@ class PrimaryNode(Node, PrimaryGraphNode):
     """
 
     def __init__(self, operation_type: [str, 'Operation'], node_data: dict = None, **kwargs):
-        Node.__init__(self, nodes_from=None, operation_type=operation_type, **kwargs)
-        PrimaryGraphNode.__init__(self, operation_type=self.operation, **kwargs)
+        super().__init__(nodes_from=None, operation_type=operation_type)
 
         if node_data is None:
             self._node_data = {}
@@ -195,7 +173,7 @@ class PrimaryNode(Node, PrimaryGraphNode):
             self._node_data = value
 
 
-class SecondaryNode(Node, SecondaryGraphNode):
+class SecondaryNode(Node):
     """
     The class defines the interface of Secondary nodes modifying tha data flow in Chain
 
@@ -206,10 +184,10 @@ class SecondaryNode(Node, SecondaryGraphNode):
 
     def __init__(self, operation_type: [str, 'Operation'], nodes_from: Optional[List['Node']] = None,
                  **kwargs):
+        if nodes_from is None:
+            nodes_from = []
         Node.__init__(self, nodes_from=nodes_from, operation_type=operation_type,
                       **kwargs)
-        SecondaryGraphNode.__init__(self, nodes_from=nodes_from, operation_type=self.operation,
-                                    **kwargs)
 
     def fit(self, input_data: InputData) -> OutputData:
         """
@@ -252,6 +230,12 @@ class SecondaryNode(Node, SecondaryGraphNode):
         secondary_input = InputData.from_predictions(outputs=parent_results)
 
         return secondary_input
+
+    def _nodes_from_with_fixed_order(self):
+        if self.nodes_from is not None:
+            return sorted(self.nodes_from, key=lambda node: node.descriptive_id)
+        else:
+            return None
 
 
 def _combine_parents(parent_nodes: List[Node],

@@ -1,16 +1,17 @@
-from typing import Callable, List, Optional
+from typing import Optional
 
-from fedot.core.chains.chain import Chain
 from fedot.core.chains.chain_validation import custom_validate, validate
+from fedot.core.composer.optimisers.graph import OptGraph
 
 
-def constraint_function(chain: Chain,
-                        custom_rules: Optional[List[Callable]] = None):
+def constraint_function(graph: OptGraph,
+                        params: Optional['GraphGenerationParams'] = None):
     try:
-        if not custom_rules:
+        if not params or params.rules_for_constraint is None:
+            chain = params.adapter.restore(graph)
             validate(chain)
         else:
-            custom_validate(chain, custom_rules)
+            custom_validate(graph, params.rules_for_constraint)
         return True
     except ValueError:
         return False

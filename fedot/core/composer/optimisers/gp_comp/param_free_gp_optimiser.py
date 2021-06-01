@@ -7,7 +7,7 @@ from deap import tools
 from fedot.core.composer.iterator import SequenceIterator, fibonacci_sequence
 from fedot.core.composer.optimisers.gp_comp.gp_operators import clean_operators_history, duplicates_filtration, \
     num_of_parents_in_crossover
-from fedot.core.composer.optimisers.gp_comp.gp_optimiser import GPChainOptimiser, GPChainOptimiserParameters
+from fedot.core.composer.optimisers.gp_comp.gp_optimiser import GPGraphOptimiser, GPChainOptimiserParameters
 from fedot.core.composer.optimisers.gp_comp.operators.inheritance import GeneticSchemeTypesEnum, inheritance
 from fedot.core.composer.optimisers.gp_comp.operators.regularization import regularized_population
 from fedot.core.composer.optimisers.gp_comp.operators.selection import selection
@@ -19,14 +19,14 @@ from fedot.core.repository.quality_metrics_repository import ComplexityMetricsEn
 DEFAULT_MAX_POP_SIZE = 55
 
 
-class GPChainParameterFreeOptimiser(GPChainOptimiser):
+class GPGraphParameterFreeOptimiser(GPGraphOptimiser):
     """
     Implementation of the parameter-free adaptive evolutionary optimiser
     (population size and genetic operators rates is changing over time).
     For details, see original paper: https://arxiv.org/abs/2001.10178
-    :param initial_chain: chain which was initialized outside the optimiser
+    :param initial_graph: chain which was initialized outside the optimiser
     :param requirements: composer requirements
-    :param chain_generation_params: parameters for new chain generation
+    :param graph_generation_params: parameters for new chain generation
     :param metrics: quality metrics
     :param parameters: parameters of chain optimiser
     :param max_population_size: maximum population size
@@ -35,11 +35,11 @@ class GPChainParameterFreeOptimiser(GPChainOptimiser):
 
     """
 
-    def __init__(self, initial_chain, requirements, chain_generation_params, metrics: List[MetricsEnum],
+    def __init__(self, initial_graph, requirements, graph_generation_params, metrics: List[MetricsEnum],
                  parameters: Optional[GPChainOptimiserParameters] = None,
                  max_population_size: int = DEFAULT_MAX_POP_SIZE,
                  sequence_function=fibonacci_sequence, log: Log = None, archive_type=None):
-        super().__init__(initial_chain, requirements, chain_generation_params, metrics, parameters, log, archive_type)
+        super().__init__(initial_graph, requirements, graph_generation_params, metrics, parameters, log, archive_type)
 
         if self.parameters.genetic_scheme_type != GeneticSchemeTypesEnum.parameter_free:
             self.log.warn(f'Invalid genetic scheme type was changed to parameter-free. Continue.')
@@ -98,7 +98,7 @@ class GPChainParameterFreeOptimiser(GPChainOptimiser):
                     regularized_population(reg_type=self.parameters.regularization_type,
                                            population=self.population,
                                            objective_function=objective_function,
-                                           chain_generation_params=self.chain_generation_params, timer=t)
+                                           graph_generation_params=self.graph_generation_params, timer=t)
 
                 if self.parameters.multi_objective:
                     filtered_archive_items = duplicates_filtration(archive=self.archive,
@@ -150,7 +150,8 @@ class GPChainParameterFreeOptimiser(GPChainOptimiser):
             self.log.info('Result:')
             self.log_info_about_best()
 
-        output = [ind.chain for ind in best] if isinstance(best, list) else best.chain
+        output = [self.graph_generation_params.adapter.restore(ind.graph) for ind in best] if isinstance(best, list) \
+            else self.graph_generation_params.adapter.restore(best.graph)
         return output
 
     @property
@@ -205,8 +206,8 @@ class GPChainParameterFreeOptimiser(GPChainOptimiser):
         suppl_metric = MetricsRepository().metric_by_id(ComplexityMetricsEnum.node_num)
         best_in_offspring = self.get_best_individual(offspring, equivalents_from_current_pop=False)
         fitness_improved = best_in_offspring.fitness < self.best_individual.fitness
-        complexity_decreased = suppl_metric(best_in_offspring.chain) < suppl_metric(
-            self.best_individual.chain) and best_in_offspring.fitness <= self.best_individual.fitness
+        complexity_decreased = suppl_metric(best_in_offspring.graph) < suppl_metric(
+            self.best_individual.graph) and best_in_offspring.fitness <= self.best_individual.fitness
         return fitness_improved, complexity_decreased
 
     def next_population_size(self, offspring: List[Any]) -> int:

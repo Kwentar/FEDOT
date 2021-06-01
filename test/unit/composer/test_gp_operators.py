@@ -7,9 +7,10 @@ from deap import tools
 from fedot.core.chains.chain import Chain
 from fedot.core.chains.node import PrimaryNode, SecondaryNode
 from fedot.core.composer.constraint import constraint_function
-from fedot.core.composer.gp_composer.gp_composer import ChainGenerationParams, GPComposerBuilder, \
+from fedot.core.composer.gp_composer.gp_composer import GPComposerBuilder, \
     GPComposerRequirements, sample_split_ratio_for_tasks
 from fedot.core.composer.optimisers.gp_comp.gp_operators import evaluate_individuals, filter_duplicates
+from fedot.core.composer.optimisers.gp_comp.gp_optimiser import GraphGenerationParams
 from fedot.core.composer.optimisers.gp_comp.individual import Individual
 from fedot.core.composer.optimisers.gp_comp.operators.crossover import CrossoverTypesEnum, crossover
 from fedot.core.composer.optimisers.gp_comp.operators.mutation import MutationTypesEnum, mutation
@@ -82,6 +83,7 @@ def test_evaluate_individuals():
     max_lead_time = datetime.timedelta(minutes=0.001)
     with CompositionTimer(max_lead_time=max_lead_time) as t:
         evaluate_individuals(individuals_set=population, objective_function=metric_function_for_nodes,
+                             graph_generation_params=GraphGenerationParams(),
                              is_multi_objective=False, timer=t)
     assert len(population) == 1
     assert population[0].fitness is not None
@@ -90,6 +92,7 @@ def test_evaluate_individuals():
     max_lead_time = datetime.timedelta(minutes=5)
     with CompositionTimer(max_lead_time=max_lead_time) as t:
         evaluate_individuals(individuals_set=population, objective_function=metric_function_for_nodes,
+                             graph_generation_params=GraphGenerationParams(),
                              is_multi_objective=False, timer=t)
     assert len(population) == 4
     assert all([ind.fitness is not None for ind in population])
@@ -133,20 +136,19 @@ def test_mutation():
     chain = chain_first()
     mutation_types = [MutationTypesEnum.none]
     log = default_log(__name__)
-    chain_gener_params = ChainGenerationParams()
+    graph_gener_params = GraphGenerationParams()
     task = Task(TaskTypesEnum.classification)
     primary_model_types, _ = OperationTypesRepository().suitable_operation(task_type=task.task_type)
     secondary_model_types = ['xgboost', 'knn', 'lda', 'qda']
     composer_requirements = GPComposerRequirements(primary=primary_model_types,
                                                    secondary=secondary_model_types, mutation_prob=1)
-    new_chain = mutation(mutation_types, chain_gener_params, chain, composer_requirements, log=log, max_depth=3)
+    new_chain = mutation(mutation_types, graph_gener_params, chain, composer_requirements, log=log, max_depth=3)
     assert new_chain == chain
     mutation_types = [MutationTypesEnum.growth]
     composer_requirements = GPComposerRequirements(primary=primary_model_types,
                                                    secondary=secondary_model_types, mutation_prob=0)
-    new_chain = mutation(mutation_types, chain_gener_params, chain, composer_requirements, log=log, max_depth=3)
+    new_chain = mutation(mutation_types, graph_gener_params, chain, composer_requirements, log=log, max_depth=3)
     assert new_chain == chain
     chain = chain_fifth()
-    assert not constraint_function(chain)
-    new_chain = mutation(mutation_types, chain_gener_params, chain, composer_requirements, log=log, max_depth=3)
+    new_chain = mutation(mutation_types, graph_gener_params, chain, composer_requirements, log=log, max_depth=3)
     assert new_chain == chain

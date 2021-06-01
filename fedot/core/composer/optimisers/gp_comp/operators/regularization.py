@@ -6,6 +6,7 @@ from fedot.core.composer.composing_history import ParentOperator
 from fedot.core.composer.constraint import constraint_function
 from fedot.core.composer.optimisers.gp_comp.gp_operators import evaluate_individuals
 from fedot.core.composer.optimisers.gp_comp.individual import Individual
+from fedot.core.composer.optimisers.graph import OptGraph
 from fedot.core.composer.optimisers.utils.multi_objective_fitness import MultiObjFitness
 from fedot.core.utils import ComparableEnum as Enum
 
@@ -17,10 +18,10 @@ class RegularizationTypesEnum(Enum):
 
 def regularized_population(reg_type: RegularizationTypesEnum, population: List[Any],
                            objective_function: Callable,
-                           chain_generation_params: Any, size: Optional[int] = None, timer=None) -> List[Any]:
+                           graph_generation_params: Any, size: Optional[int] = None, timer=None) -> List[Any]:
     if reg_type == RegularizationTypesEnum.decremental:
         additional_inds = decremental_regularization(population, objective_function,
-                                                     chain_generation_params.chain_class, size, timer=timer)
+                                                     graph_generation_params, size, timer=timer)
         return population + additional_inds
     elif reg_type == RegularizationTypesEnum.none:
         return population
@@ -29,26 +30,28 @@ def regularized_population(reg_type: RegularizationTypesEnum, population: List[A
 
 
 def decremental_regularization(population: List[Individual], objective_function: Callable,
-                               chain_class: Any, size: Optional[int] = None, timer=None) -> List[Any]:
+                               graph_generation_params: Any, size: Optional[int] = None, timer=None) -> List[Any]:
     size = size if size else len(population)
     additional_inds = []
     prev_nodes_ids = []
     for ind in population:
-        ind_subtrees = [node for node in ind.chain.nodes if node != ind.chain.root_node]
-        subtrees = [chain_class(deepcopy(node.ordered_subnodes_hierarchy())) for node in ind_subtrees if
+        ind_subtrees = [node for node in ind.graph.nodes if node != ind.graph.root_node]
+        subtrees = [OptGraph(deepcopy(node.ordered_subnodes_hierarchy())) for node in ind_subtrees if
                     is_fitted_subtree(node, prev_nodes_ids)]
         additional_inds += subtrees
         prev_nodes_ids += [subtree.root_node.descriptive_id for subtree in subtrees]
         for add_ind in additional_inds:
             add_ind.parent_operators.append(ParentOperator(operator_type='regularization',
                                                            operator_name='decremental_regularization',
-                                                           parent_chains=[ChainTemplate(ind.chain)]))
+                                                           parent_chains=[ChainTemplate(ind.graph)]))
 
-    additional_inds = [ind for ind in additional_inds if constraint_function(ind)]
+    additional_inds = [ind for ind in additional_inds if constraint_function(ind,
+                                                                             graph_generation_params)]
 
     is_multi_obj = (population[0].fitness) is MultiObjFitness
     if additional_inds:
-        evaluate_individuals(additional_inds, objective_function, is_multi_obj, timer=timer)
+        evaluate_individuals(additional_inds, objective_function, graph_generation_params,
+                             is_multi_obj, timer=timer)
 
     if additional_inds and len(additional_inds) > size:
         additional_inds = sorted(additional_inds, key=lambda ind: ind.fitness)[:size]

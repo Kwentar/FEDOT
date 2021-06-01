@@ -1,10 +1,4 @@
-
 from copy import copy
-from copy import deepcopy
-from datetime import timedelta
-from multiprocessing import Manager, Process
-from typing import Callable, List, Optional, Union
-from uuid import uuid4
 from datetime import timedelta
 from multiprocessing import Manager, Process
 from typing import Callable, List, Optional, Union
@@ -18,13 +12,11 @@ from fedot.core.composer.timer import Timer
 from fedot.core.data.data import InputData
 from fedot.core.data.multi_modal import MultiModalData
 from fedot.core.log import Log, default_log
-from fedot.core.graphs.graph import GraphObject
-from fedot.core.log import Log
-
+from fedot.core.dag.graph import Graph
 ERROR_PREFIX = 'Invalid chain configuration:'
 
 
-class Chain(GraphObject):
+class Chain(Graph):
     """
     Base class used for composite model structure definition
 
@@ -42,7 +34,13 @@ class Chain(GraphObject):
         self.computation_time = None
         self.template = None
         self.fitted_on_data = {}
-        super().__init__(nodes, log)
+
+        self.log = log
+        if not log:
+            self.log = default_log(__name__)
+        else:
+            self.log = log
+        super().__init__(nodes)
 
     def fit_from_scratch(self, input_data: InputData = None):
         """

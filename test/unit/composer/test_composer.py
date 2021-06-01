@@ -279,7 +279,7 @@ def test_gp_composer_with_start_depth(data_fixture, request):
     composer = builder.build()
     composer.compose_chain(data=dataset_to_compose,
                            is_visualise=True)
-    assert all([ind.chain.depth <= 3 for ind in composer.history.individuals[0]])
+    assert all([ind.graph.depth <= 3 for ind in composer.history.individuals[0]])
     assert composer.optimiser.max_depth == 5
 
 

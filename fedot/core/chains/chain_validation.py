@@ -7,16 +7,16 @@ from networkx.algorithms.isolate import isolates
 from fedot.core.chains.chain import Chain, nodes_with_operation
 from fedot.core.chains.chain_convert import chain_as_nx_graph
 from fedot.core.chains.node import PrimaryNode, SecondaryNode
-from fedot.core.graphs.graph import GraphObject
 from fedot.core.operations.model import Model
 from fedot.core.repository.operation_types_repository import \
     OperationTypesRepository, get_ts_operations
 from fedot.core.repository.tasks import Task
+from fedot.core.dag.graph import Graph
 
 ERROR_PREFIX = 'Invalid chain configuration:'
 
 
-def custom_validate(graph: GraphObject, rules: List[Callable]):
+def custom_validate(graph: Graph, rules: List[Callable]):
     for rule_func in rules:
         rule_func(graph)
 
@@ -44,12 +44,12 @@ def validate(chain: 'Chain', task: Optional[Task] = None):
     return True
 
 
-def has_one_root(chain: 'GraphObject'):
+def has_one_root(chain: 'Graph'):
     if chain.root_node:
         return True
 
 
-def has_no_cycle(chain: 'GraphObject'):
+def has_no_cycle(chain: 'Graph'):
     graph, _ = chain_as_nx_graph(chain)
     cycled = list(simple_cycles(graph))
     if len(cycled) > 0:
@@ -58,7 +58,7 @@ def has_no_cycle(chain: 'GraphObject'):
     return True
 
 
-def has_no_isolated_nodes(chain: 'GraphObject'):
+def has_no_isolated_nodes(chain: 'Graph'):
     graph, _ = chain_as_nx_graph(chain)
     isolated = list(isolates(graph))
     if len(isolated) > 0 and chain.length != 1:
@@ -66,19 +66,19 @@ def has_no_isolated_nodes(chain: 'GraphObject'):
     return True
 
 
-def has_primary_nodes(chain: 'GraphObject'):
+def has_primary_nodes(chain: 'Graph'):
     if not any(node for node in chain.nodes if isinstance(node, PrimaryNode)):
         raise ValueError(f'{ERROR_PREFIX} Chain does not have primary nodes')
     return True
 
 
-def has_no_self_cycled_nodes(chain: 'GraphObject'):
+def has_no_self_cycled_nodes(chain: 'Graph'):
     if any([node for node in chain.nodes if isinstance(node, SecondaryNode) and node in node.nodes_from]):
         raise ValueError(f'{ERROR_PREFIX} Chain has self-cycled nodes')
     return True
 
 
-def has_no_isolated_components(chain: 'GraphObject'):
+def has_no_isolated_components(chain: 'Graph'):
     graph, _ = chain_as_nx_graph(chain)
     ud_graph = nx.Graph()
     ud_graph.add_nodes_from(graph)

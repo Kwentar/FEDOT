@@ -43,10 +43,10 @@ class ComposingHistory:
             parent_operators = []
             for ind in individuals:
                 new_ind = deepcopy(ind)
-                new_ind.chain = self._convert_chain_to_template(ind.chain)
+                new_ind.graph = self._convert_chain_to_template(ind.graph)
                 new_individuals.append(new_ind)
-                if hasattr(ind.chain, 'computation_time'):
-                    chains_comp_time.append(ind.chain.computation_time)
+                if hasattr(ind.graph, 'computation_time'):
+                    chains_comp_time.append(ind.graph.computation_time)
                 parent_operators.append(ind.parent_operators)
             self.individuals.append(new_individuals)
             self.chains_comp_time_history.append(chains_comp_time)
@@ -61,9 +61,9 @@ class ComposingHistory:
             archive_comp_time = []
             for ind in individuals:
                 new_ind = deepcopy(ind)
-                new_ind.chain = self._convert_chain_to_template(ind.chain)
+                new_ind.graph = self._convert_chain_to_template(ind.graph)
                 new_individuals.append(new_ind)
-                archive_comp_time.append(ind.chain.computation_time)
+                archive_comp_time.append(ind.graph.computation_time)
             self.archive_history.append(new_individuals)
             self.archive_comp_time_history.append(archive_comp_time)
         except Exception as ex:
@@ -82,7 +82,7 @@ class ComposingHistory:
                     fitness = ind.fitness.values
                 else:
                     fitness = ind.fitness
-                row = [idx, gen_num, fitness, len(ind.chain.operation_templates), ind.chain.depth,
+                row = [idx, gen_num, fitness, len(ind.graph.operation_templates), ind.graph.depth,
                        self.chains_comp_time_history[gen_num][ind_num]]
                 self._add_history_to_csv(file, row)
                 idx += 1
@@ -137,7 +137,7 @@ class ComposingHistory:
 
     @property
     def historical_chains(self):
-        return [ind.chain for ind in list(itertools.chain(*self.individuals))]
+        return [ind.graph for ind in list(itertools.chain(*self.individuals))]
 
     @property
     def is_multi_objective(self):
