@@ -10,11 +10,11 @@ from fedot.core.chains.chain_convert import chain_as_nx_graph
 from fedot.core.chains.chain_validation import has_no_cycle, has_no_self_cycled_nodes
 from fedot.core.composer.gp_composer.gp_composer import GPComposerRequirements
 from fedot.core.composer.optimisers.adapters import DirectAdapter
-from fedot.core.composer.optimisers.gp_comp.gp_optimiser import GPGraphOptimiser, GPChainOptimiserParameters, \
+from fedot.core.composer.optimisers.gp_comp.gp_optimiser import GPChainOptimiserParameters, GPGraphOptimiser, \
     GeneticSchemeTypesEnum, GraphGenerationParams
 from fedot.core.composer.optimisers.gp_comp.operators.crossover import CrossoverTypesEnum
 from fedot.core.composer.optimisers.gp_comp.operators.regularization import RegularizationTypesEnum
-from fedot.core.composer.optimisers.graph import OptGraph, GraphVertex
+from fedot.core.composer.optimisers.graph import GraphVertex, OptGraph
 from fedot.core.dag.graph import Graph
 from fedot.core.log import default_log
 from fedot.core.utils import fedot_project_root
@@ -27,12 +27,17 @@ class Network(Graph):
     def evaluate(self, data: pd.DataFrame):
         nodes = data.columns.to_list()
         _, labels = chain_as_nx_graph(self)
-        return nodes
+        return len(nodes)
+
+
+class NetworkNode(GraphVertex):
+    def __str__(self):
+        return f'Node_{self.operation}'
 
 
 def custom_metric(graph: Network, data: pd.DataFrame):
     graph.show()
-    existing_variables_num = -graph.depth#graph.evaluate(data)
+    existing_variables_num = -graph.depth - graph.evaluate(data)
 
     return [existing_variables_num]
 
@@ -62,7 +67,7 @@ def run_bayesian(max_lead_time: datetime.timedelta = datetime.timedelta(minutes=
                    'Porosity', 'Permeability', 'Depth']
     rules = [has_no_self_cycled_nodes, has_no_cycle, _has_no_duplicates]
 
-    initial = Network(nodes=[GraphVertex(nodes_from=None,
+    initial = Network(nodes=[NetworkNode(nodes_from=None,
                                          operation_type=_) for _ in nodes_types])
 
     requirements = GPComposerRequirements(
